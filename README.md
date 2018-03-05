@@ -1,6 +1,5 @@
 # PBTricks
 Everyday use functions.
-![alt text](diagram.png "Converting EEG recordings to movie snippets")
 
 # How to install
 
