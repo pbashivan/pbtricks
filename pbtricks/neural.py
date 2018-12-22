@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.preprocessing import scale
+import os
+import h5py
 
 
 def reps_to_array(reps):
@@ -66,3 +68,35 @@ def project_reps(input_reps, W_mat):
     reps.append(scale(rep))
   comp_reps = np.tensordot(reps, W_mat, axes=1)
   return comp_reps
+
+
+def load_neural_data(data_dir, pool=False, normalize=True):
+  """
+  Loads neural data in the form of three files (raw data, normalizer responses and gra response)
+  :param data_dir: folder containing the files (rate_img.mat, rate_gray.mat, rate_norm.mat)
+  :param pool: pools all data together before calculating mean and std
+  :param normalize: normalize the responses by mean and std of normalizer responses
+  :return: normalized responses, gray response and normalizer responses
+  """
+  with h5py.File(os.path.join(data_dir, 'rate_img.mat')) as h5file:
+    im_reps = np.array(h5file['rate_img']).transpose(2, 0, 1)
+  with h5py.File(os.path.join(data_dir, 'rate_gray.mat')) as h5file:
+    gray_reps = np.array(h5file['rate_gray']).transpose(1, 0)
+  with h5py.File(os.path.join(data_dir, 'rate_norm.mat')) as h5file:
+    norm_reps = np.array(h5file['rate_norm']).transpose(2, 0, 1)
+
+  if normalize:
+    # Normalize responses
+    if pool:
+      bias = np.nanmean(norm_reps.reshape(-1, norm_reps.shape[-1]), axis=0)
+      std = np.std(norm_reps.reshape(-1, norm_reps.shape[-1]), axis=0)
+    else:
+      bias = np.nanmean(norm_reps, axis=0).mean(0)
+      std = np.nanmean(norm_reps, axis=0).std(0)
+
+    v4_data_reps = (im_reps - bias) / std
+    gray_reps = (gray_reps - bias) / std
+    return v4_data_reps, gray_reps, norm_reps
+  else:
+    return im_reps, gray_reps, norm_reps
+

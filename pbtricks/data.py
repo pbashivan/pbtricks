@@ -26,13 +26,21 @@ def pack_images_h5(images_path, output_path=None, file_type='png', image_names=N
     files_list = sorted(os.listdir(images_path))
     for filename in files_list:
       if filename.endswith("." + file_type):
-        images.append(imread(filename))
+        im = imread(filename)
+        if np.ndim(im) == 2:
+          im = np.repeat(np.expand_dims(im, -1), 3, axis=-1)
+        images.append(im)
   else:
     for idx in image_names:
       filename = os.path.join(images_path, idx + '.' + file_type)
-      images.append(imread(filename))
+      im = imread(filename)
+      if np.ndim(im) == 2:
+        im = np.repeat(np.expand_dims(im, -1), 3, axis=-1)
+      images.append(im)
+
   if output_path is None:
     output_path = images_path
   with h5py.File(os.path.join(output_path, 'images.h5'), 'w') as h5file:
     h5file.create_dataset('images', data=np.array(images))
+
   print('Finished saving.')
