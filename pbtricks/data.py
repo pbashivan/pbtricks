@@ -5,8 +5,15 @@ import os
 import h5py
 import numpy as np
 
+npa = np.array
+
 
 def unpickle(file):
+  """
+  Load contents of a pickle file
+  :param file:
+  :return:
+  """
   with open(file, 'rb') as fo:
     dict = pickle.load(fo, encoding='bytes')
   return dict
@@ -44,3 +51,17 @@ def pack_images_h5(images_path, output_path=None, file_type='png', image_names=N
     h5file.create_dataset('images', data=np.array(images))
 
   print('Finished saving.')
+
+
+def load_h5file(path, keys=None):
+  """
+  Load contents of a hdf5 file
+  :param path: path to h5 file
+  :param keys: keys to load
+  :return:
+  """
+  with h5py.File(path) as h5file:
+    if keys is None:
+      keys = h5file.keys()
+    return {k: npa(h5file[k]) for k in keys}
+
