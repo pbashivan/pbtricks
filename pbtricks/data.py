@@ -18,7 +18,7 @@ def pack_images_h5(images_path, output_path=None, file_type='png', image_names=N
   :param images_path: path to directory containing the images
   :param output_path: path to save the output file
   :param file_type: file extension name: "png"
-  :param image_names: list containing name of all images (default: None -->‌ all the images found under the path)
+  :param image_names: list containing name of all images (None: all images)
   :return: None
   """
   images = []
@@ -26,7 +26,7 @@ def pack_images_h5(images_path, output_path=None, file_type='png', image_names=N
     files_list = sorted(os.listdir(images_path))
     for filename in files_list:
       if filename.endswith("." + file_type):
-        im = imread(filename)
+        im = imread(os.path.join(images_path, filename))
         if np.ndim(im) == 2:
           im = np.repeat(np.expand_dims(im, -1), 3, axis=-1)
         images.append(im)
