@@ -17,6 +17,7 @@ import sys
 import logging
 import tensorflow.contrib.slim as slim
 npa = np.array
+import pbtricks.define_flags
 
 
 class Extractor(object):
