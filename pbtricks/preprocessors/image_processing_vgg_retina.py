@@ -23,8 +23,6 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-from scipy.optimize import curve_fit
-import numpy as np
 from absl import flags
 import define_flags
 from retina.retina_tf import warp_image

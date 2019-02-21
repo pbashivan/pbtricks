@@ -23,8 +23,6 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-from scipy.optimize import curve_fit
-import numpy as np
 from absl import flags
 import define_flags
 from retina.retina_tf import warp_image
@@ -58,7 +56,6 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
       less than the crop size.
   """
   original_shape = image.shape
-  input_size = np.min([original_shape[0], original_shape[1]])
 
   rank_assertion = tf.Assert(
     tf.equal(tf.rank(image), 3),

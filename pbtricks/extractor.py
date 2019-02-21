@@ -100,8 +100,8 @@ class Extractor(object):
       import pbtricks.preprocessors.image_processing_alex_retina as imprep_retina
     with self._graph.as_default():
       images_resized = np.zeros((images.shape[0], self._image_size, self._image_size, 3), dtype=np.float32)
-      image = tf.placeholder(tf.float32, shape=list(images.shape[1:]))
-      image = imprep_retina._central_crop([image], self._image_size, self._image_size)[0]
+      image_holder = tf.placeholder(tf.float32, shape=list(images.shape[1:]))
+      image = imprep_retina._central_crop([image_holder], self._image_size, self._image_size)[0]
       image.set_shape([self._image_size, self._image_size, 3])
       image = imprep_retina._mean_image_subtraction(image,
                                                     [imprep_retina._R_MEAN, imprep_retina._G_MEAN,
@@ -115,7 +115,7 @@ class Extractor(object):
       print('\n')
       for i, im in enumerate(images):
         # print('resizing image %d / %d' % (i + 1, images.shape[0]), end='')
-        images_resized[i] = self._sess.run(image, feed_dict={tmp_holder: im})
+        images_resized[i] = self._sess.run(image, feed_dict={image_holder: im})
     return images_resized
 
   def _read_images(self, images):
