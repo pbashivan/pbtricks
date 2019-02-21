@@ -100,11 +100,7 @@ class Extractor(object):
       import pbtricks.preprocessors.image_processing_alex_retina as imprep_retina
     with self._graph.as_default():
       images_resized = np.zeros((images.shape[0], self._image_size, self._image_size, 3), dtype=np.float32)
-      tmp_holder = tf.placeholder(tf.float32, shape=list(images.shape[1:]))
-      if imprep_retina.MAX_VIEW != images.shape[1]:
-        image = imprep_retina._aspect_preserving_resize(tmp_holder, imprep_retina._RESIZE_SIDE_MIN)
-      else:
-        image = tmp_holder
+      image = tf.placeholder(tf.float32, shape=list(images.shape[1:]))
       image = imprep_retina._central_crop([image], self._image_size, self._image_size)[0]
       image.set_shape([self._image_size, self._image_size, 3])
       image = imprep_retina._mean_image_subtraction(image,
@@ -262,10 +258,10 @@ class Extractor(object):
         self.images_placeholder = tf.placeholder(tf.float32,
                                                  shape=tuple([self._batch_size] + list(self.images_resized.shape[1:])))
 
-        _, self._endpoints = self.model.inference(self.images_placeholder, self._num_classes, for_training=False)
+        _, self._endpoints = self._model.inference(self.images_placeholder, self._num_classes, for_training=False)
         if average_vars:
           variable_averages = tf.train.ExponentialMovingAverage(
-            self.model.MOVING_AVERAGE_DECAY)
+            self._model.MOVING_AVERAGE_DECAY)
           variables_to_restore = variable_averages.variables_to_restore()
         else:
           variables_to_restore = slim.get_variables_to_restore()

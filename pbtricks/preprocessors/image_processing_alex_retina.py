@@ -42,6 +42,7 @@ _RESIZE_SIDE_MAX = 299
 
 _RESIZE_EVAL = 299 # Size of the window in pixel that the retina transformation with operate on.
 
+
 def _crop(image, offset_height, offset_width, crop_height, crop_width):
   """Crops the given image using the provided offsets and sizes.
   Note that the method doesn't assume we know the input image size but it does
