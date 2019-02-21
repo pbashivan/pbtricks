@@ -16,13 +16,13 @@ import os
 import sys
 import logging
 import tensorflow.contrib.slim as slim
+
 npa = np.array
-import pbtricks.define_flags
 
 
 class Extractor(object):
-  def __init__(self, model, checkpoint_path, model_type, dataset,
-               preprocess_type, retina, image_size, batch_size, output_path,
+  def __init__(self, checkpoint_path, model_type, dataset,
+               preprocess_type, retina, image_size, batch_size, output_path, model_graph=None,
                log_rate=10, num_classes=1001,
                zoo_path='/braintree/home/bashivan/dropbox/Codes/base_model/Pipeline/Model_zoo/'):
     """Evaluate model on Dataset for a number of steps."""
@@ -31,20 +31,20 @@ class Extractor(object):
     # loaded otherwise would retreat to the default model zoo.
 
     self._setup_logger()
-    self.logger.info('Logger setup complete.')
+    self._logger.info('Logger setup complete.')
 
-    self.model = model
-    self.checkpoint_path = checkpoint_path
-    self.model_type = model_type
-    self.dataset = dataset
-    self.preprocess_type = preprocess_type
-    self.retina = retina
-    self.image_size = image_size
-    self.batch_size = batch_size
-    self.log_rate = log_rate
-    self.num_classes = num_classes
-    self.output_path = output_path
-    self.zoo_path = zoo_path
+    self._model = model_graph
+    self._checkpoint_path = checkpoint_path
+    self._model_type = model_type
+    self._dataset = dataset
+    self._preprocess_type = preprocess_type
+    self._retina = retina
+    self._image_size = image_size
+    self._batch_size = batch_size
+    self._log_rate = log_rate
+    self._num_classes = num_classes
+    self._output_path = output_path
+    self._zoo_path = zoo_path
     self._initialized = False
     self._images_placeholder = None
     self._endpoints = None
@@ -57,63 +57,64 @@ class Extractor(object):
     self._G_MEAN = 116.78
     self._B_MEAN = 103.94
 
-    if self.model is None:
-      assert (self.checkpoint_path is not None) & \
-             (self.model_type is not None)
-      if self.zoo_path not in sys.path:
-        sys.path.insert(0, self.zoo_path)
-      if os.path.isdir(self.checkpoint_path):
-        if self.checkpoint_path not in sys.path:
-          sys.path.insert(0, self.checkpoint_path)
+    if self._model is None:
+      assert (self._checkpoint_path is not None) & \
+             (self._model_type is not None)
+      if self._zoo_path not in sys.path:
+        sys.path.insert(0, self._zoo_path)
+      if os.path.isdir(self._checkpoint_path):
+        if self._checkpoint_path not in sys.path:
+          sys.path.insert(0, self._checkpoint_path)
       else:
-        tmp_path = os.path.dirname(self.checkpoint_path)
+        tmp_path = os.path.dirname(self._checkpoint_path)
         if tmp_path not in sys.path:
           sys.path.insert(0, tmp_path)
-      exec ('import {0}_model as model_class'.format(self.model_type))
+      exec('import {0}_model as model_class'.format(self._model_type))
 
-      self.model = eval('model_class.{0}()'.format(self.model_type.title()))
+      self._model = eval('model_class.{0}()'.format(self._model_type.title()))
 
   def _setup_logger(self):
     FORMAT = '%(asctime)-15s - %(message)s'
     logging.basicConfig(format=FORMAT)
-    self.logger = logging.getLogger('basiclogger')
+    self._logger = logging.getLogger('basiclogger')
 
   def _preprocess_images(self, images):
-    images_resized = np.zeros((images.shape[0], self.image_size, self.image_size, 3), dtype=np.float32)
+    images_resized = np.zeros((images.shape[0], self._image_size, self._image_size, 3), dtype=np.float32)
     for i, im in enumerate(images):
-      images_resized[i] = scipy.misc.imresize(im, (self.image_size, self.image_size, 3)).astype(np.float32)
-    if self.preprocess_type in ['simple', 'inception', 'alex'] or 'cifar' in self.dataset:
+      images_resized[i] = scipy.misc.imresize(im, (self._image_size, self._image_size, 3)).astype(np.float32)
+    if self._preprocess_type in ['simple', 'inception', 'alex'] or 'cifar' in self._dataset:
       images_resized -= 128.
       images_resized /= 128.
-      self.logger.info('(-1 - 1)')
+      self._logger.info('(-1 - 1)')
     else:
       images_resized -= npa([self._R_MEAN, self._G_MEAN, self._B_MEAN]).reshape(1, 1, 1, 3)
-      self.logger.info('(-128 - 128)')
+      self._logger.info('(-128 - 128)')
     return images_resized
 
   def _preprocess_images_retina(self, images):
-    if self.preprocess_type == 'vgg':
-      import image_processing_vgg_retina as imprep_retina
-    elif self.preprocess_type == 'alex':
-      import image_processing_alex_retina as imprep_retina
+    if self._preprocess_type == 'vgg':
+      import pbtricks.preprocessors.image_processing_vgg_retina as imprep_retina
+    elif self._preprocess_type == 'alex':
+      import pbtricks.preprocessors.image_processing_alex_retina as imprep_retina
     else:
-      import image_processing_alex_retina as imprep_retina
+      import pbtricks.preprocessors.image_processing_alex_retina as imprep_retina
     with self._graph.as_default():
-      images_resized = np.zeros((images.shape[0], self.image_size, self.image_size, 3), dtype=np.float32)
+      images_resized = np.zeros((images.shape[0], self._image_size, self._image_size, 3), dtype=np.float32)
       tmp_holder = tf.placeholder(tf.float32, shape=list(images.shape[1:]))
       if imprep_retina.MAX_VIEW != images.shape[1]:
         image = imprep_retina._aspect_preserving_resize(tmp_holder, imprep_retina._RESIZE_SIDE_MIN)
       else:
         image = tmp_holder
-      image = imprep_retina._central_crop([image], self.image_size, self.image_size)[0]
-      image.set_shape([self.image_size, self.image_size, 3])
+      image = imprep_retina._central_crop([image], self._image_size, self._image_size)[0]
+      image.set_shape([self._image_size, self._image_size, 3])
       image = imprep_retina._mean_image_subtraction(image,
-                                                    [imprep_retina._R_MEAN, imprep_retina._G_MEAN, imprep_retina._B_MEAN])
-      if self.preprocess_type in ['simple', 'inception', 'alex']:
-        self.logger.info('(0-1)')
+                                                    [imprep_retina._R_MEAN, imprep_retina._G_MEAN,
+                                                     imprep_retina._B_MEAN])
+      if self._preprocess_type in ['simple', 'inception', 'alex']:
+        self._logger.info('(0-1)')
         image = tf.div(image, 128.)
       else:
-        self.logger.info('(0-255)')
+        self._logger.info('(0-255)')
 
       print('\n')
       for i, im in enumerate(images):
@@ -126,16 +127,16 @@ class Extractor(object):
     assert isinstance(images, np.ndarray)
     if np.ndim(images) == 3:
       images = np.repeat(np.expand_dims(images, 3), 3, axis=3)
-    if self.dataset == 'imagenet':
-      if self.retina:
-        self.logger.info('Preprocessing Retina')
+    if self._dataset == 'imagenet':
+      if self._retina:
+        self._logger.info('Preprocessing Retina')
         self.images_resized = self._preprocess_images_retina(images)
       else:
-        self.logger.info('Preprocessing Normal')
+        self._logger.info('Preprocessing Normal')
         self.images_resized = self._preprocess_images(images)
     else:
       self.images_resized = self._preprocess_images(images)
-    self.logger.info('Preprocessing done!')
+    self._logger.info('Preprocessing done!')
 
   @staticmethod
   def tf_repeat(images, num_reps=3):
@@ -158,39 +159,37 @@ class Extractor(object):
   def _load_checkpoint(self):
     init = tf.global_variables_initializer()
     self._sess.run(init)
-    if os.path.isdir(self.checkpoint_path):
-      ckpt = tf.train.get_checkpoint_state(self.checkpoint_path)
+    if os.path.isdir(self._checkpoint_path):
+      ckpt = tf.train.get_checkpoint_state(self._checkpoint_path)
       if ckpt and ckpt.model_checkpoint_path:
         if os.path.isabs(ckpt.model_checkpoint_path):
           # Restores from checkpoint with absolute path.
           self._saver.restore(self._sess, ckpt.model_checkpoint_path)
         else:
           # Restores from checkpoint with relative path.
-          self._saver.restore(self._sess, os.path.join(self.checkpoint_path,
-                                                ckpt.model_checkpoint_path))
+          self._saver.restore(self._sess, os.path.join(self._checkpoint_path,
+                                                       ckpt.model_checkpoint_path))
 
         # Assuming model_checkpoint_path looks something like:
         #   /my-favorite-path/imagenet_train/model.ckpt-0,
         # extract global_step from it.
         global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-        self.logger.info('Succesfully loaded model from %s at step=%s.' %
+        self._logger.info('Succesfully loaded model from %s at step=%s.' %
                          (ckpt.model_checkpoint_path, global_step))
       else:
-        self.logger.info('No checkpoint file found')
+        self._logger.info('No checkpoint file found')
         return
 
     else:
-      self._saver.restore(self._sess, self.checkpoint_path)
-      global_step = self.checkpoint_path.split('/')[-1].split('-')[-1]
-      self.logger.info('Succesfully loaded model from %s at step=%s.' %
-                       (self.checkpoint_path, global_step))
+      self._saver.restore(self._sess, self._checkpoint_path)
+      global_step = self._checkpoint_path.split('/')[-1].split('-')[-1]
+      self._logger.info('Succesfully loaded model from %s at step=%s.' %
+                       (self._checkpoint_path, global_step))
 
   def _calculate_activations(self, endpoints_to_extract):
     """
-    Runs Eval once.
-    :param saver: instance of TF saver class
-    :param endpoints: dictionary containing endpoint tensors
-    :param images_placeholder: TF image placeholder
+    Extract activations from designated layers.
+    :param endpoints_to_extract: name of endpoints for which the activations should be extracted.
     :return:
     """
     if not self._initialized:
@@ -198,20 +197,20 @@ class Extractor(object):
       self._initialized = True
     try:
       num_examples = self.images_resized.shape[0]
-      num_iter = int(math.ceil(num_examples / self.batch_size))
+      num_iter = int(math.ceil(num_examples / self._batch_size))
       step = 0
       start_time = time.time()
       total_examples = 0
 
-      if self.output_path is not None:
-        with h5py.File(self.output_path) as h5file:
+      if self._output_path is not None:
+        with h5py.File(self._output_path) as h5file:
           # Remove all model features in HDF5
           for key in h5file.keys():
             if 'mdl_' in key:
               h5file.__delitem__(key)
 
       all_feats = None
-      for batch in self.iterate_minibatches(self.images_resized, self.batch_size):
+      for batch in self.iterate_minibatches(self.images_resized, self._batch_size):
         # if not coord.should_stop():
         total_examples += batch.shape[0]
         feed_dict = {self.images_placeholder: batch}
@@ -220,8 +219,8 @@ class Extractor(object):
           endpoints_to_extract = feats.keys()
 
         # Store specific feature sets
-        if self.output_path is not None:
-          with h5py.File(self.output_path) as h5file:
+        if self._output_path is not None:
+          with h5py.File(self._output_path) as h5file:
             for key in endpoints_to_extract:
               if 'mdl_' + key.replace('/', '_') not in h5file.keys():
                 ds_feat = h5file.create_dataset('mdl_' + key.replace('/', '_'),
@@ -229,7 +228,7 @@ class Extractor(object):
                                                 dtype=np.float32)
               else:
                 ds_feat = h5file['mdl_' + key.replace('/', '_')]
-              ds_feat[step * self.batch_size:(step + 1) * self.batch_size, :] = feats[key]
+              ds_feat[step * self._batch_size:(step + 1) * self._batch_size, :] = feats[key]
         else:
           if all_feats is None:
             all_feats = feats
@@ -238,20 +237,20 @@ class Extractor(object):
               all_feats[key] = np.concatenate((all_feats[key], feats[key]), axis=0)
 
         step += 1
-        if step % self.log_rate == 0:
+        if step % self._log_rate == 0:
           duration = time.time() - start_time
-          sec_per_batch = duration / self.log_rate
-          examples_per_sec = self.batch_size / sec_per_batch
-          self.logger.info('%s: [%d batches out of %d] (%.1f examples/sec; %.3f'
+          sec_per_batch = duration / self._log_rate
+          examples_per_sec = self._batch_size / sec_per_batch
+          self._logger.info('%s: [%d batches out of %d] (%.1f examples/sec; %.3f'
                            'sec/batch)' % (datetime.now(), step, num_iter,
                                            examples_per_sec, sec_per_batch))
           start_time = time.time()
-      self.logger.info('%s: [%d examples]' %
+      self._logger.info('%s: [%d examples]' %
                        (datetime.now(), total_examples))
-      if self.output_path is None:
+      if self._output_path is None:
         return all_feats
       else:
-        return self.output_path
+        return self._output_path
 
     except Exception as e:
       raise e
@@ -261,9 +260,9 @@ class Extractor(object):
     with self._graph.as_default():
       if not self._initialized:
         self.images_placeholder = tf.placeholder(tf.float32,
-                                                 shape=tuple([self.batch_size] + list(self.images_resized.shape[1:])))
+                                                 shape=tuple([self._batch_size] + list(self.images_resized.shape[1:])))
 
-        _, self._endpoints = self.model.inference(self.images_placeholder, self.num_classes, for_training=False)
+        _, self._endpoints = self.model.inference(self.images_placeholder, self._num_classes, for_training=False)
         if average_vars:
           variable_averages = tf.train.ExponentialMovingAverage(
             self.model.MOVING_AVERAGE_DECAY)
