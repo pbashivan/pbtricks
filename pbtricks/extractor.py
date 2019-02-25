@@ -77,6 +77,7 @@ class Extractor(object):
     FORMAT = '%(asctime)-15s - %(message)s'
     logging.basicConfig(format=FORMAT)
     self._logger = logging.getLogger('basiclogger')
+    self._logger.setLevel('INFO')
 
   def _preprocess_images(self, images):
     images_resized = np.zeros((images.shape[0], self._image_size, self._image_size, 3), dtype=np.float32)
@@ -252,6 +253,7 @@ class Extractor(object):
       raise e
 
   def extract(self, images, average_vars=False, endpoints_to_extract=None):
+    assert images.shape[0] % self._batch_size == 0
     self._read_images(images)
     with self._graph.as_default():
       if not self._initialized:
