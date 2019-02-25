@@ -3,13 +3,11 @@ from __future__ import print_function
 import itertools
 import numpy as np
 import h5py
-from functools import reduce
 from scipy.stats import pearsonr
 
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LinearRegression
 from sklearn.decomposition import PCA, IncrementalPCA
-from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 from sklearn.preprocessing import scale
@@ -37,18 +35,19 @@ def object_averages(x, meta):
   return x_obj
 
 
-def compute_rdm(x, meta, method='pearson', type='obj'):
+def compute_rdm(x, meta, method='pearson', rdm_type='obj'):
   """
   Computes RDM for a feature matrix.
   :param x: (array) feature matrix of size (n_images, n_features)
+  :param meta: dictionary containing the meta information "objec", "category"
   :param method: (str) similarity measure to use ('pearson', 'spearman')
-  :param type: (str) type of RDM matrix to compute ('image', 'obj'). For 'obj'
+  :param rdm_type: (str) type of RDM matrix to compute ('image', 'obj'). For 'obj'
                      the average response of each feature to each object is
                      first computed and then the RDM is computed. For 'image'
                      RDM is computed between images.
   :return: (float)
   """
-  if type == 'obj':
+  if rdm_type == 'obj':
     x_av = object_averages(x, meta)
   else:
     x_av = x
@@ -77,7 +76,7 @@ def _rdm_worker(input_path, meta, layer, seed=None, num_units=1000, rdm_type='ob
   if feats.ndim > 2:
     feats = feats.reshape(feats.shape[0], -1)
   tmp_indx_list = np.random.choice(feats.shape[1], np.min([num_units, feats.shape[1]]), replace=False)
-  rdm = compute_rdm(feats[:, tmp_indx_list], meta, type=rdm_type)
+  rdm = compute_rdm(feats[:, tmp_indx_list], meta, rdm_type=rdm_type)
   return rdm
 
 
@@ -113,18 +112,18 @@ class MetricsExpert(object):
     self._reps = reps
 
   @staticmethod
-  def splithalf_averages(M):
+  def splithalf_averages(m):
     """
     Splits the M matrix into two splits along the first axis and computes the average of each split.
-    :param M: n-dimensional numpy array
+    :param m: n-dimensional numpy array
     :return: average of values in M split along the first dimension.
     """
-    length = M.shape[0]
+    length = m.shape[0]
     ri = range(length)
     np.random.shuffle(ri)
     ri1 = ri[:length // 2]
     ri2 = ri[length // 2:]
-    return np.nanmean(M[ri1], axis=0), np.nanmean(M[ri2], axis=0)
+    return np.nanmean(m[ri1], axis=0), np.nanmean(m[ri2], axis=0)
 
   @staticmethod
   def spearman_brown_correction(r, num_folds=2):
@@ -163,7 +162,7 @@ class MetricsExpert(object):
       raise ValueError("input 'reps' should be of type list or numpy ndarray.")
 
   @staticmethod
-  def compute_consistency(reps, num_resamples, n_jobs=20, rand_seed=0, method='spearman', population=True):
+  def compute_consistency(reps, num_resamples, n_jobs=20, rand_seed=0, method='spearman', population=False):
     """
     Compute population consistency by splitting the reps matrix into two folds along its first dimension and
      compute the correlation between the average value for each split.
@@ -200,29 +199,14 @@ class MetricsExpert(object):
                                                              (reps[:, :, n], rand_seed + r, metric))
                                       for r in range(num_resamples)))
 
-    return corr_list
-
-  @staticmethod
-  def estimate_neural_dim(reps, num_resamples=20, n_jobs=50, rand_seed=0):
-    # Apply PCA on the average data
-    av_response = np.nanmean(reps, axis=0)
-    pca = PCA(whiten=True)
-    pca.fit(scale(av_response))
-    explained_var = [reduce(lambda x, y: x + y, pca.explained_variance_ratio_[:i + 1]) for i in
-                     range(len(pca.explained_variance_ratio_))]
-    # Find the noise threshold from population consistency
-    threshold = np.mean(MetricsExpert.compute_consistency(reps,
-                                                          num_resamples=num_resamples,
-                                                          n_jobs=n_jobs,
-                                                          rand_seed=rand_seed)) ** 2
-    dim = np.nonzero(explained_var > threshold)[0][0] + 1
-    return dim
+    return npa(corr_list)
 
   def compute_fit_score(self,
                         num_folds=2,
                         rand_state=0,
                         subsample=False,
                         subset_size=None,
+                        normalize=False,
                         reg=LinearRegression(n_jobs=-1)):
     """
     Compute the regression score, given model_features and the response variables
@@ -231,7 +215,8 @@ class MetricsExpert(object):
     :param subsample: Flag for whether to subsample the features.
     :param subset_size: size of the subsample
     :param reg: Regression model to fit the data
-    :return:
+    :param normalize: flag whether to normalize the scores by internal consistency of neurons
+    :return: correlation score between predictions and response values
     """
     classifiers = []
     kf = KFold(num_folds, shuffle=True, random_state=rand_state)
@@ -251,8 +236,10 @@ class MetricsExpert(object):
       reg.fit(now_train_data, now_train_label)
       classifiers.append(reg)
       predictions[test_ind] = reg.predict(now_test_data)
-    unit_score = r2_score(self._y, predictions, multioutput='raw_values')
-    return unit_score, classifiers, predictions
+    unit_scores = [pearsonr(predictions[:, i], self._y[:, i])[0] for i in range(self._y.shape[-1])]
+    if normalize:
+      unit_scores /= self.compute_consistency(self._reps, 20, population=False).mean(1)
+    return unit_scores, classifiers, predictions
 
   @staticmethod
   def preprocess_features(features, n_components, iterative=True):
@@ -278,25 +265,25 @@ class MetricsExpert(object):
       output[c:c + batch_size] = pca.transform(features[c:c + batch_size])
     return output
 
-  def compute_rdm(self, X, method='pearson', type='obj'):
+  def compute_rdm(self, x, method='pearson', rdm_type='obj'):
     """
     Computes RDM for a feature matrix.
-    :param X: (array) feature matrix of size (n_images, n_features)
+    :param x: (array) feature matrix of size (n_images, n_features)
     :param method: (str) similarity measure to use ('pearson', 'spearman')
-    :param type: (str) type of RDM matrix to compute ('image', 'obj'). For 'obj'
+    :param rdm_type: (str) type of RDM matrix to compute ('image', 'obj'). For 'obj'
                        the average response of each feature to each object is
                        first computed and then the RDM is computed. For 'image'
                        RDM is computed between images.
     :return: (float)
     """
-    if type == 'obj':
-      X_av = self.object_averages(X)
+    if rdm_type == 'obj':
+      x_av = self.object_averages(x)
     else:
-      X_av = X
+      x_av = x
     if method == 'pearson':
-      return 1 - np.corrcoef(X_av)
+      return 1 - np.corrcoef(x_av)
     elif method == 'spearman':
-      return 1 - spearmanr(X_av, axis=1)[0]
+      return 1 - spearmanr(x_av, axis=1)[0]
     else:
       raise ValueError("Method not supported. ('pearson', 'spearman')")
 
@@ -311,13 +298,14 @@ class MetricsExpert(object):
     x_obj = npa([x[npa(m['obj'] == o), :].mean(0) for o in objects_by_category])
     return x_obj
 
-  def plot_rdm(self, X):
-    X_av = self.object_averages(X)
+  def plot_rdm(self, x):
+    x_av = self.object_averages(x)
     fig, ax = plt.subplots()
-    plt.matshow(np.corrcoef(X_av.T))
+    plt.matshow(np.corrcoef(x_av.T))
     return fig, ax
 
-  def apply_pca(self, features, pca_method='pca'):
+  @staticmethod
+  def apply_pca(features, pca_method='pca'):
     """
 
     :param features:
