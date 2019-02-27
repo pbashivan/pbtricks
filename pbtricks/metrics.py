@@ -59,7 +59,7 @@ def compute_rdm(x, meta, method='pearson', rdm_type='obj'):
     raise ValueError("Method not supported. ('pearson', 'spearman')")
 
 
-def _rdm_worker(input_path, meta, layer, seed=None, num_units=1000, rdm_type='obj'):
+def _rdm_worker(input_path, meta, layer, channel_average=False, seed=None, num_units=1000, rdm_type='obj'):
   """
   Worker function
   :param input_path:
@@ -73,6 +73,9 @@ def _rdm_worker(input_path, meta, layer, seed=None, num_units=1000, rdm_type='ob
   if seed is not None:
     np.random.seed(seed)
   feats = np.array(h5py.File(input_path)[layer])
+  if channel_average:
+    assert feats.ndim > 2
+    feats = np.mean(feats, axis=(1, 2))
   if feats.ndim > 2:
     feats = feats.reshape(feats.shape[0], -1)
   tmp_indx_list = np.random.choice(feats.shape[1], np.min([num_units, feats.shape[1]]), replace=False)
