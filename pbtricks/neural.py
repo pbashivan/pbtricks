@@ -100,3 +100,16 @@ def load_neural_data(data_dir, pool=False, normalize=True):
   else:
     return im_reps, gray_reps, norm_reps
 
+
+def split_reps(x, seed=0):
+  """
+  Split the reps tensor into two random splits of same size
+  :param x:
+  :param seed:
+  :return:
+  """
+  np.random.seed(seed)
+  num_reps = x.shape[0]
+  inds = np.random.choice(range(num_reps), size=num_reps // 2, replace=False)
+  inds_rest = list(set(range(num_reps)) - set(inds))
+  return x[inds], x[inds_rest]

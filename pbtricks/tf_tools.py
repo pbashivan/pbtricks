@@ -1,6 +1,18 @@
 import tensorflow as tf
 
 
+def tf_repeat(x, num_reps):
+  """
+  Copies values of a 1D tensor "num_reps" times
+  :param x: 1D tensor
+  :param num_reps: (int) number of reps
+  :return:
+  """
+  x = tf.tile(tf.expand_dims(x, axis=-1), [1, num_reps])
+  x = tf.reshape(x, [-1])
+  return x
+
+
 def mean_image_subtraction(image, means):
   """Subtracts the given means from each image channel.
   For example:
