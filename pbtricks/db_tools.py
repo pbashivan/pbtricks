@@ -23,7 +23,7 @@ def _check_connection(f):
   return wrapper_func
 
 
-class DbInterface(object):
+class MongoInterface(object):
   def __init__(self, server, port, db_name, collection_name):
     self._client = MongoClient(server, port)
     self._db = self._client[db_name]
