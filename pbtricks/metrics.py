@@ -122,7 +122,7 @@ class MetricsExpert(object):
     :return: average of values in M split along the first dimension.
     """
     length = m.shape[0]
-    ri = range(length)
+    ri = list(range(length))
     np.random.shuffle(ri)
     ri1 = ri[:length // 2]
     ri2 = ri[length // 2:]
@@ -194,13 +194,13 @@ class MetricsExpert(object):
           for n in range(num_neurons):
             corr_list.append(parallel(delayed(indirect_call)(MetricsExpert, '_consistency_worker',
                                                              ([N0[:, :, n] for N0 in reps], rand_seed + r, metric))
-                                      for r in range(num_resamples)))
+                                      for r in list(range(num_resamples))))
         else:
           num_neurons = reps.shape[-1]
           for n in range(num_neurons):
             corr_list.append(parallel(delayed(indirect_call)(MetricsExpert, '_consistency_worker',
                                                              (reps[:, :, n], rand_seed + r, metric))
-                                      for r in range(num_resamples)))
+                                      for r in list(range(num_resamples))))
 
     return npa(corr_list)
 
