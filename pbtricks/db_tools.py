@@ -13,7 +13,7 @@ def _check_connection(f):
   @wraps(f)
   def wrapper_func(self, *args, **kwargs):
     try:
-      self.db.collection_names()
+      self._db.collection_names()
       return f(self, *args, **kwargs)
     except ServerSelectionTimeoutError:
       print('connection is down, trying to reconnect...')

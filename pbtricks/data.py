@@ -60,7 +60,7 @@ def load_h5file(path, keys=None):
   :param keys: keys to load
   :return:
   """
-  with h5py.File(path) as h5file:
+  with h5py.File(path, 'r') as h5file:
     if keys is None:
       keys = h5file.keys()
     return {k: npa(h5file[k]) for k in keys}
