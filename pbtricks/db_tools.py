@@ -46,7 +46,7 @@ class MongoInterface(object):
     if self.entry_exists(entry):
       return -1
     else:
-      self._collection.insert_one(entry.values_dict)
+      self._collection.insert_one(entry)
       return 0
 
   @_check_connection
