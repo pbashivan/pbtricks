@@ -67,7 +67,6 @@ class MongoInterface(object):
     :param upsert: (bool) whether to upsert or not
     :return:
     """
-    entry.refresh_timestamp()
     if self.entry_exists(criteria):
       self._collection.update(criteria,
                               {'$set': entry}, upsert=False)
