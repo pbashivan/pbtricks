@@ -77,6 +77,13 @@ class MongoInterface(object):
       else:
         raise MissingEntry()
 
+  def close(self):
+    """
+    closes the connection to MongoDB
+    :return:
+    """
+    self._client.close()
+
 
 class MissingEntry(Exception):
   """Entry does not exist in MongoDB.
