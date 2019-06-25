@@ -50,6 +50,15 @@ class MongoInterface(object):
       return 0
 
   @_check_connection
+  def find_all_entries(self, entry):
+    """
+    Looks for matching entry for a model_def in the table.
+    :param entry: (DbEntry) entry object for inquiry
+    :return: Returns the entry if exists otherwise returns None
+    """
+    return self._collection.find(entry)
+
+  @_check_connection
   def find_entry(self, entry):
     """
     Looks for matching entry for a model_def in the table.
