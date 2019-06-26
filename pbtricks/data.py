@@ -1,6 +1,6 @@
 from __future__ import print_function
 import pickle
-from scipy.misc import imread
+from imageio import imread
 import os
 import h5py
 import numpy as np
