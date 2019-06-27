@@ -9,7 +9,7 @@ import math
 import os.path
 import time
 import h5py
-import scipy.misc
+import skimage
 import numpy as np
 import tensorflow as tf
 import os
@@ -82,7 +82,7 @@ class Extractor(object):
   def _preprocess_images(self, images):
     images_resized = np.zeros((images.shape[0], self._image_size, self._image_size, 3), dtype=np.float32)
     for i, im in enumerate(images):
-      images_resized[i] = scipy.misc.imresize(im, (self._image_size, self._image_size, 3)).astype(np.float32)
+      images_resized[i] = skimage.transform.resize(im, (self._image_size, self._image_size, 3)).astype(np.float32)
     if self._preprocess_type in ['simple', 'inception', 'alex'] or 'cifar' in self._dataset:
       images_resized -= 128.
       images_resized /= 128.
