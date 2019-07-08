@@ -216,23 +216,26 @@ class Extractor(object):
           endpoints_to_extract = feats.keys()
 
         # Store specific feature sets
-        if self._output_path is not None:
-          with h5py.File(self._output_path) as h5file:
-            for key in endpoints_to_extract:
-              if 'mdl_' + key.replace('/', '_') not in h5file.keys():
-                ds_feat = h5file.create_dataset('mdl_' + key.replace('/', '_'),
-                                                shape=self.images_resized.shape[0:1] + feats[key].shape[1:],
-                                                dtype=np.float32)
-              else:
-                ds_feat = h5file['mdl_' + key.replace('/', '_')]
-              ds_feat[step * self._batch_size:(step + 1) * self._batch_size, :] = feats[key]
-        else:
-          if all_feats is None:
-            all_feats = feats
+        try:
+          if self._output_path is not None:
+            with h5py.File(self._output_path) as h5file:
+              for key in endpoints_to_extract:
+                if 'mdl_' + key.replace('/', '_') not in h5file.keys():
+                  ds_feat = h5file.create_dataset('mdl_' + key.replace('/', '_'),
+                                                  shape=self.images_resized.shape[0:1] + feats[key].shape[1:],
+                                                  dtype=np.float32)
+                else:
+                  ds_feat = h5file['mdl_' + key.replace('/', '_')]
+                ds_feat[step * self._batch_size:(step + 1) * self._batch_size, :] = feats[key]
           else:
-            for key in endpoints_to_extract:
-              all_feats[key] = np.concatenate((all_feats[key], feats[key]), axis=0)
-
+            if all_feats is None:
+              all_feats = feats
+            else:
+              for key in endpoints_to_extract:
+                all_feats[key] = np.concatenate((all_feats[key], feats[key]), axis=0)
+        except KeyError:
+          print(feats.keys())
+          raise KeyError
         step += 1
         if step % self._log_rate == 0:
           duration = time.time() - start_time
