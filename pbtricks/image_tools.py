@@ -21,7 +21,7 @@ def pad_to_square(input_image, desired_size, fill="grey"):
   delta_w = desired_size - new_size[0]
   delta_h = desired_size - new_size[1]
   padding = (delta_w // 2, delta_h // 2, delta_w - (delta_w // 2), delta_h - (delta_h // 2))
-  return ImageOps.expand(im, padding, fill=fill)
+  return np.array(ImageOps.expand(im, padding, fill=fill))
 
 
 def resize_mat(mat, new_size):
