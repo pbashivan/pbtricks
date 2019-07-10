@@ -60,8 +60,13 @@ def load_h5file(path, keys=None):
   :param keys: keys to load
   :return:
   """
-  with h5py.File(path, 'r') as h5file:
-    if keys is None:
-      keys = h5file.keys()
-    return {k: npa(h5file[k]) for k in keys}
+  try:
+    with h5py.File(path, 'r') as h5file:
+      if keys is None:
+        keys = []
+        h5file.visit(keys.append)
+      return {k: npa(h5file[k]) for k in keys}
+  except KeyError:
+    print('Existing keys are: ', h5file.keys())
+    raise KeyError
 
