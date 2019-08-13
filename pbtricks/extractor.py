@@ -25,6 +25,21 @@ class Extractor(object):
                preprocess_type, retina, image_size, batch_size, output_path, model_graph=None,
                log_rate=10, num_classes=1001,
                zoo_path='/braintree/home/bashivan/dropbox/Codes/base_model/Pipeline/Model_zoo/'):
+    """
+    Initialize a feature extractor object.
+    :param checkpoint_path: path to where the model checkpoint lives
+    :param model_type: name of the model
+    :param dataset: dataset name (only affects the preprocessing of the data) [imagenet, cifar10, cifar100]
+    :param preprocess_type: type of preprocessing [simple, inception, alex, vgg]
+    :param retina: whether to use retina transformation when reading the data
+    :param image_size: size of the image on the input
+    :param batch_size: batch size
+    :param output_path: path to which the features are saved
+    :param model_graph: TF graph to be used. A new one will be created if set to None
+    :param log_rate: Output logging rate
+    :param num_classes: number of classes in the last layer of the network
+    :param zoo_path: path to where the model script lives
+    """
     """Evaluate model on Dataset for a number of steps."""
     # Add zoo_path before checkpoint_dir. It will check the checkpoint_dir before zoo_path
     # to find the model definition file. If it exists along with the checkpoints will be
@@ -256,6 +271,13 @@ class Extractor(object):
       raise e
 
   def extract(self, images, average_vars=False, endpoints_to_extract=None):
+    """
+    Extract features in response to the images
+    :param images: (numpy array) images array
+    :param average_vars: (bool) whether to use the average variables from the checkpoint
+    :param endpoints_to_extract: (list) list of all the layer names for which the features are extracted.
+    :return:
+    """
     assert images.shape[0] % self._batch_size == 0
     self._read_images(images)
     with self._graph.as_default():
