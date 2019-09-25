@@ -23,7 +23,7 @@ npa = np.array
 class Extractor(object):
   def __init__(self, checkpoint_path, model_type, dataset,
                preprocess_type, retina, image_size, batch_size, output_path, model_graph=None,
-               log_rate=10, num_classes=1001,
+               log_rate=10, num_classes=1001, gpu_options=None,
                zoo_path='/braintree/home/bashivan/dropbox/Codes/base_model/Pipeline/Model_zoo/'):
     """
     Initialize a feature extractor object.
@@ -48,6 +48,7 @@ class Extractor(object):
     self._setup_logger()
     self._logger.info('Logger setup complete.')
 
+    self._gpu_options = gpu_options
     self._model = model_graph
     self._checkpoint_path = checkpoint_path
     self._model_type = model_type
@@ -66,7 +67,10 @@ class Extractor(object):
     self._saver = None
     self._graph = tf.Graph()
     with self._graph.as_default():
-      self._sess = tf.Session()
+      if self._gpu_options is None:
+        self._sess = tf.Session()
+      else:
+        self._sess = tf.Session(config=tf.ConfigProto(gpu_options=self._gpu_options))
 
     self._R_MEAN = 123.68
     self._G_MEAN = 116.78
