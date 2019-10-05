@@ -78,11 +78,11 @@ def load_neural_data(data_dir, pool=False, normalize=True):
   :param normalize: normalize the responses by mean and std of normalizer responses
   :return: normalized responses, gray response and normalizer responses
   """
-  with h5py.File(os.path.join(data_dir, 'rate_img.mat')) as h5file:
+  with h5py.File(os.path.join(data_dir, 'rate_img.mat'), 'r') as h5file:
     im_reps = np.array(h5file['rate_img']).transpose(2, 0, 1)
-  with h5py.File(os.path.join(data_dir, 'rate_gray.mat')) as h5file:
+  with h5py.File(os.path.join(data_dir, 'rate_gray.mat'), 'r') as h5file:
     gray_reps = np.array(h5file['rate_gray']).transpose(1, 0)
-  with h5py.File(os.path.join(data_dir, 'rate_norm.mat')) as h5file:
+  with h5py.File(os.path.join(data_dir, 'rate_norm.mat'), 'r') as h5file:
     norm_reps = np.array(h5file['rate_norm']).transpose(2, 0, 1)
 
   if normalize:
